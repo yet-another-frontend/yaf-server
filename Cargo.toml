@@ -1,0 +1,14 @@
+[package]
+name = "yaf-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bzip2 = "0.6.1"
+chrono = "0.4.45"
+cpal = "0.18.2"
+reqwest = { version = "0.13.5", features = ["blocking"] }
+rubato = "5.0.1"
+sherpa-onnx = "1.13.8"
+tar = "0.4.46"
+thiserror = "2.0.21"
