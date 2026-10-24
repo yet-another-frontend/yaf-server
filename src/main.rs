@@ -1,4 +1,3 @@
-pub mod macros;
 mod recognizer;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -7,6 +6,8 @@ use std::io;
 use std::sync::{Arc, Mutex};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt().init();
+
     let recognizer = Recognizer::new(STTModel::WhisperBase)?;
 
     // Find the default microphone.

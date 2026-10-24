@@ -1,4 +1,3 @@
-use crate::info;
 use bzip2::read::BzDecoder;
 use rubato::audioadapter_buffers::owned::InterleavedOwned;
 use rubato::{Fft, FixedSync, Resampler};
@@ -6,6 +5,7 @@ use sherpa_onnx::{OfflineRecognizer, OfflineRecognizerConfig, OfflineWhisperMode
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use tar::Archive;
+use tracing::info;
 
 const MODELS_PATH: &str = "./models";
 const TARGET_SAMPLE_RATE: i32 = 16_000;
