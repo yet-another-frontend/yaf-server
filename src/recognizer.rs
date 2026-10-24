@@ -56,14 +56,26 @@ pub struct Recognizer {
 
 #[derive(thiserror::Error, Debug)]
 pub enum RecognizerError {
-    #[error("failed to download model: {0}")]
-    ModelDownloadFail(#[from] Box<dyn std::error::Error>),
-
     #[error("invalid sample rate")]
     InvalidSampleRate,
 
     #[error("transcription failed: {0}")]
     TranscriptionFail(String),
+
+    #[error("model download failed: {0}")]
+    DownloadModel(#[from] DownloadModelError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum DownloadModelError {
+    #[error("io error: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("HTTP request error: {0}")]
+    RequestError(#[from] reqwest::Error),
+
+    #[error("expected encoder file was not found in {path}")]
+    EncoderNotFound { path: PathBuf },
 }
 
 impl Recognizer {
@@ -166,7 +178,7 @@ fn resample_audio(
 fn download_model(
     model: STTModel,
     cache_dir: impl AsRef<Path>,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
+) -> Result<PathBuf, DownloadModelError> {
     // Create directory to store model in
     let cache_dir = cache_dir.as_ref();
     fs::create_dir_all(cache_dir)?;
@@ -215,11 +227,9 @@ fn download_model(
         .join(format!("{}-encoder.onnx", model.model_name()))
         .exists()
     {
-        return Err(format!(
-            "Expected encoder file was not found in {}",
-            model_dir.display()
-        )
-        .into());
+        return Err(DownloadModelError::EncoderNotFound {
+            path: model_dir.clone(),
+        });
     }
 
     fs::remove_file(&archive_path)?;
