@@ -62,20 +62,11 @@ pub enum RecognizerError {
     #[error("transcription failed: {0}")]
     TranscriptionFail(String),
 
+    #[error("resample failed: {0}")]
+    ResampleFail(String),
+
     #[error("model download failed: {0}")]
-    DownloadModel(#[from] DownloadModelError),
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum DownloadModelError {
-    #[error("io error: {0}")]
-    IoError(#[from] std::io::Error),
-
-    #[error("HTTP request error: {0}")]
-    RequestError(#[from] reqwest::Error),
-
-    #[error("expected encoder file was not found in {path}")]
-    EncoderNotFound { path: PathBuf },
+    DownloadModelFail(String),
 }
 
 impl Recognizer {
@@ -83,7 +74,8 @@ impl Recognizer {
         let mut recognizer_config = OfflineRecognizerConfig::default();
         recognizer_config.model_config.provider = Some("cpu".to_string());
 
-        let model_dir = download_model(model, MODELS_PATH)?;
+        let model_dir = download_model(model, MODELS_PATH)
+            .map_err(|e| RecognizerError::DownloadModelFail(e.to_string()))?;
         let model_name = model.model_name();
 
         recognizer_config.model_config.whisper = OfflineWhisperModelConfig {
@@ -137,7 +129,7 @@ impl Recognizer {
         }
 
         let resampled_samples = resample_audio(samples, sample_rate)
-            .map_err(|e| RecognizerError::TranscriptionFail(e.to_string()))?;
+            .map_err(|e| RecognizerError::ResampleFail(e.to_string()))?;
 
         let stream = self.recognizer.create_stream();
 
@@ -178,7 +170,7 @@ fn resample_audio(
 fn download_model(
     model: STTModel,
     cache_dir: impl AsRef<Path>,
-) -> Result<PathBuf, DownloadModelError> {
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Create directory to store model in
     let cache_dir = cache_dir.as_ref();
     fs::create_dir_all(cache_dir)?;
@@ -223,13 +215,14 @@ fn download_model(
 
     archive.unpack(cache_dir)?;
 
-    if !model_dir
-        .join(format!("{}-encoder.onnx", model.model_name()))
-        .exists()
-    {
-        return Err(DownloadModelError::EncoderNotFound {
-            path: model_dir.clone(),
-        });
+    let encoder_path = model_dir.join(format!("{}-encoder.onnx", model.model_name()));
+
+    if !encoder_path.exists() {
+        return Err(RecognizerError::DownloadModelFail(format!(
+            "Encoder file not found: {}. Check the extracted archive structure.",
+            encoder_path.display()
+        ))
+        .into());
     }
 
     fs::remove_file(&archive_path)?;
