@@ -2889,6 +2889,7 @@ dependencies = [
  "reqwest",
  "rubato",
  "serde",
+ "serde_json",
  "sherpa-onnx",
  "tar",
  "thiserror 2.0.21",

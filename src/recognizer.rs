@@ -1,3 +1,4 @@
+use crate::config::{STTModel, ServerConfig};
 use bzip2::read::BzDecoder;
 use rubato::audioadapter_buffers::owned::InterleavedOwned;
 use rubato::{Fft, FixedSync, Resampler};
@@ -7,47 +8,7 @@ use std::path::{Path, PathBuf};
 use tar::Archive;
 use tracing::info;
 
-const MODELS_PATH: &str = "./models";
 const TARGET_SAMPLE_RATE: i32 = 16_000;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(non_camel_case_types, unused)]
-pub enum STTModel {
-    WhisperLargeV3Turbo,
-    WhisperLargeV3,
-    WhisperLargeV2,
-    WhisperLarge,
-    WhisperMedium,
-    WhisperSmall,
-    WhisperBase,
-    WhisperTiny,
-}
-
-impl STTModel {
-    fn model_name(&self) -> &str {
-        match self {
-            Self::WhisperLargeV3Turbo => "turbo",
-            Self::WhisperLargeV3 => "large-v3",
-            Self::WhisperLargeV2 => "large-v2",
-            Self::WhisperLarge => "large",
-            Self::WhisperMedium => "medium",
-            Self::WhisperSmall => "small",
-            Self::WhisperBase => "base",
-            Self::WhisperTiny => "tiny",
-        }
-    }
-
-    fn archive_name(&self) -> String {
-        format!("sherpa-onnx-whisper-{}.tar.bz2", self.model_name())
-    }
-
-    pub fn download_url(&self) -> String {
-        format!(
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/{}",
-            self.archive_name()
-        )
-    }
-}
 
 pub struct Recognizer {
     recognizer: OfflineRecognizer,
@@ -70,13 +31,13 @@ pub enum RecognizerError {
 }
 
 impl Recognizer {
-    pub fn new(model: STTModel) -> Result<Self, RecognizerError> {
+    pub fn new(config: ServerConfig) -> Result<Self, RecognizerError> {
         let mut recognizer_config = OfflineRecognizerConfig::default();
-        recognizer_config.model_config.provider = Some("cpu".to_string());
+        recognizer_config.model_config.provider = Some(config.provider.as_str().to_string());
 
-        let model_dir = download_model(model, MODELS_PATH)
+        let model_dir = download_model(config.model, config.models_dir)
             .map_err(|e| RecognizerError::DownloadModelFail(e.to_string()))?;
-        let model_name = model.model_name();
+        let model_name = config.model.model_name();
 
         recognizer_config.model_config.whisper = OfflineWhisperModelConfig {
             encoder: Some(
@@ -110,7 +71,7 @@ impl Recognizer {
 
         info!(
             "Recognizer initialized with Whisper {} model.",
-            model.model_name()
+            config.model.model_name()
         );
 
         Ok(Self {

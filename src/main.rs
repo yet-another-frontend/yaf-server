@@ -1,11 +1,12 @@
+mod config;
 mod handlers;
 mod recognizer;
 mod state;
 
+use crate::config::ServerConfig;
 use crate::handlers::transcribe::transcribe;
 use crate::state::AppState;
 use axum::{Router, routing::post};
-use recognizer::STTModel;
 use std::{net::SocketAddr, sync::Arc};
 use tracing::info;
 
@@ -13,7 +14,9 @@ fn main() {
     tracing_subscriber::fmt().init();
 
     // Synchronous runtime is necessary to download models
-    let state = Arc::new(AppState::new(STTModel::WhisperBase));
+    let config = ServerConfig::read("./config.json".into()).unwrap();
+    let addr = format!("0.0.0.0:{}", config.port);
+    let state = Arc::new(AppState::new(config));
 
     // Start tokio asynchronous runtime
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -22,9 +25,9 @@ fn main() {
             .route("/test/transcribe", post(transcribe))
             .with_state(state);
 
-        let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+        let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
 
-        info!("Listening on http://localhost:3000.");
+        info!("Listening on {}.", &addr);
 
         axum::serve(
             listener,

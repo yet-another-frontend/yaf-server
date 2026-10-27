@@ -1,0 +1,6 @@
+{
+    "model": "whisper-tiny",
+    "models_dir": "./models",
+    "port": 8080,
+    "provider": "cpu"
+}

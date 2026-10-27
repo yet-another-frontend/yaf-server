@@ -1,13 +1,13 @@
-use crate::recognizer::{Recognizer, STTModel};
+use crate::{config::ServerConfig, recognizer::Recognizer};
 
 pub struct AppState {
     pub recognizer: Recognizer,
 }
 
 impl AppState {
-    pub fn new(model: STTModel) -> Self {
+    pub fn new(config: ServerConfig) -> Self {
         Self {
-            recognizer: Recognizer::new(model).expect("Failed to initialize recognizer"),
+            recognizer: Recognizer::new(config).expect("Failed to initialize recognizer"),
         }
     }
 }
